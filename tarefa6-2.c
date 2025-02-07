@@ -13,10 +13,9 @@ const uint I2C_SDA = 14;
 const uint I2C_SCL = 15;
 
 // Definição dos pinos usados para o joystick e LEDs
-const int VRX = 26;          // Pino de leitura do eixo X do joystick (conectado ao ADC)
-const int VRY = 27;          // Pino de leitura do eixo Y do joystick (conectado ao ADC)
-const int ADC_CHANNEL_0 = 0; // Canal ADC para o eixo X do joystick
-const int ADC_CHANNEL_1 = 1; // Canal ADC para o eixo Y do joystick
+const int VRY = 26;          // Pino de leitura do eixo Y do joystick (conectado ao ADC)
+const int ADC_CHANNEL_0 = 1; // Canal ADC para o eixo X do joystick
+const int ADC_CHANNEL_1 = 0; // Canal ADC para o eixo Y do joystick
 const int SW = 22;           // Pino de leitura do botão do joystick
 
 const int LED_B = 13;                    // Pino para controle do LED azul via PWM
@@ -31,7 +30,6 @@ void setup_joystick()
 {
   // Inicializa o ADC e os pinos de entrada analógica
   adc_init();         // Inicializa o módulo ADC
-  adc_gpio_init(VRX); // Configura o pino VRX (eixo X) para entrada ADC
   adc_gpio_init(VRY); // Configura o pino VRY (eixo Y) para entrada ADC
 
   // Inicializa o pino do botão do joystick
@@ -58,7 +56,44 @@ void setup()
   setup_joystick();                                // Chama a função de configuração do joystick
   setup_pwm_led(LED_B, &slice_led_b, led_b_level); // Configura o PWM para o LED azul
   setup_pwm_led(LED_R, &slice_led_r, led_r_level); // Configura o PWM para o LED vermelho
+}
 
+void updateMenu(uint8_t *ssd, struct render_area *frame_area){
+  // Parte do código para exibir a mensagem no display (opcional: mudar ssd1306_height para 32 em ssd1306_i2c.h)
+  // /**
+  char *text[] = {
+      "  Bem-vindos!   ",
+      "  Embarcatech   "};
+
+  int y = 0;
+  for (uint i = 0; i < count_of(text); i++)
+  {
+      ssd1306_draw_string(ssd, 5, y, text[i]);
+      y += 8;
+  }
+  render_on_display(ssd, frame_area);
+}
+
+void LimparDisplay(uint8_t *ssd, struct render_area *frame_area) {
+  memset(ssd, 0, ssd1306_buffer_length);
+  render_on_display(ssd, frame_area);
+}
+
+// Função para ler os valores dos eixos do joystick (X e Y)
+void joystick_read_axis(uint16_t *vry_value)
+{
+  // Leitura do valor do eixo Y do joystick
+  adc_select_input(ADC_CHANNEL_1); // Seleciona o canal ADC para o eixo Y
+  sleep_us(2);                     // Pequeno delay para estabilidade
+  *vry_value = adc_read();         // Lê o valor do eixo Y (0-4095)
+}
+
+// Função principal
+int main()
+{
+  uint16_t vry_value, sw_value; // Variáveis para armazenar os valores do joystick (eixos X e Y) e botão
+  setup();                                 // Chama a função de configuração
+  
   i2c_init(i2c1, ssd1306_i2c_clock * 1000);
   gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
   gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
@@ -78,55 +113,18 @@ void setup()
 
   calculate_render_area_buffer_length(&frame_area);
 
-  // zera o display inteiro
   uint8_t ssd[ssd1306_buffer_length];
-  memset(ssd, 0, ssd1306_buffer_length);
-  render_on_display(ssd, &frame_area);
-
-restart:
-
-  // Parte do código para exibir a mensagem no display (opcional: mudar ssd1306_height para 32 em ssd1306_i2c.h)
-  // /**
-  char *text[] = {
-      "  Bem-vindos!   ",
-      "  Embarcatech   "};
-
-  int y = 0;
-  for (uint i = 0; i < count_of(text); i++)
-  {
-      ssd1306_draw_string(ssd, 5, y, text[i]);
-      y += 8;
-  }
-  render_on_display(ssd, &frame_area);
-}
-
-// Função para ler os valores dos eixos do joystick (X e Y)
-void joystick_read_axis(uint16_t *vrx_value, uint16_t *vry_value)
-{
-  // Leitura do valor do eixo X do joystick
-  adc_select_input(ADC_CHANNEL_0); // Seleciona o canal ADC para o eixo X
-  sleep_us(2);                     // Pequeno delay para estabilidade
-  *vrx_value = adc_read();         // Lê o valor do eixo X (0-4095)
-
-  // Leitura do valor do eixo Y do joystick
-  adc_select_input(ADC_CHANNEL_1); // Seleciona o canal ADC para o eixo Y
-  sleep_us(2);                     // Pequeno delay para estabilidade
-  *vry_value = adc_read();         // Lê o valor do eixo Y (0-4095)
-}
-
-// Função principal
-int main()
-{
-  uint16_t vrx_value, vry_value, sw_value; // Variáveis para armazenar os valores do joystick (eixos X e Y) e botão
-  setup();                                 // Chama a função de configuração
-  printf("Joystick-PWM\n");                // Exibe uma mensagem inicial via porta serial
+  LimparDisplay(ssd, &frame_area); 
+  
   // Loop principal
+  int item_selecionado = 1;
   while (1)
   {
-    joystick_read_axis(&vrx_value, &vry_value); // Lê os valores dos eixos do joystick
-    // Ajusta os níveis PWM dos LEDs de acordo com os valores do joystick
-    pwm_set_gpio_level(LED_B, vrx_value); // Ajusta o brilho do LED azul com o valor do eixo X
+    joystick_read_axis(&vry_value); // Lê os valores dos eixos do joystick
     pwm_set_gpio_level(LED_R, vry_value); // Ajusta o brilho do LED vermelho com o valor do eixo Y
+    if (vry_value < 1000) {
+      updateMenu(ssd, &frame_area);
+    }
 
     // Pequeno delay antes da próxima leitura
     sleep_ms(100); // Espera 100 ms antes de repetir o ciclo
