@@ -58,12 +58,25 @@ void setup()
   setup_pwm_led(LED_R, &slice_led_r, led_r_level); // Configura o PWM para o LED vermelho
 }
 
-void updateMenu(uint8_t *ssd, struct render_area *frame_area){
+void updateMenu(uint8_t *ssd, struct render_area *frame_area, int item){
   // Parte do código para exibir a mensagem no display (opcional: mudar ssd1306_height para 32 em ssd1306_i2c.h)
-  // /**
-  char *text[] = {
-      "  Bem-vindos!   ",
-      "  Embarcatech   "};
+  char *text[3];
+  
+  if(item == 1) {
+    text[0] = "X  Item 1";
+    text[1] = "   Item 2";
+    text[2] = "   Item 3";
+  }
+  if(item == 2) {
+    text[0] = "   Item 1";
+    text[1] = "X  Item 2";
+    text[2] = "   Item 3";
+  }
+  if(item == 3) {
+    text[0] = "   Item 1";
+    text[1] = "   Item 2";
+    text[2] = "X  Item 3";
+  }
 
   int y = 0;
   for (uint i = 0; i < count_of(text); i++)
@@ -80,8 +93,7 @@ void LimparDisplay(uint8_t *ssd, struct render_area *frame_area) {
 }
 
 // Função para ler os valores dos eixos do joystick (X e Y)
-void joystick_read_axis(uint16_t *vry_value)
-{
+void joystick_read_axis(uint16_t *vry_value) {
   // Leitura do valor do eixo Y do joystick
   adc_select_input(ADC_CHANNEL_1); // Seleciona o canal ADC para o eixo Y
   sleep_us(2);                     // Pequeno delay para estabilidade
@@ -89,8 +101,7 @@ void joystick_read_axis(uint16_t *vry_value)
 }
 
 // Função principal
-int main()
-{
+int main() {
   uint16_t vry_value, sw_value; // Variáveis para armazenar os valores do joystick (eixos X e Y) e botão
   setup();                                 // Chama a função de configuração
   
@@ -116,17 +127,44 @@ int main()
   uint8_t ssd[ssd1306_buffer_length];
   LimparDisplay(ssd, &frame_area); 
   
-  // Loop principal
   int item_selecionado = 1;
-  while (1)
-  {
+  updateMenu(ssd, &frame_area, item_selecionado);
+
+  while (1) {
     joystick_read_axis(&vry_value); // Lê os valores dos eixos do joystick
-    pwm_set_gpio_level(LED_R, vry_value); // Ajusta o brilho do LED vermelho com o valor do eixo Y
+    // pwm_set_gpio_level(LED_R, vry_value); // Ajusta o brilho do LED vermelho com o valor do eixo Y
+    
     if (vry_value < 1000) {
-      updateMenu(ssd, &frame_area);
+      if (item_selecionado == 1) {
+        updateMenu(ssd, &frame_area, item_selecionado);
+        item_selecionado = 2;
+
+      } else if (item_selecionado == 2) {
+        updateMenu(ssd, &frame_area, item_selecionado);
+        item_selecionado = 3;
+
+      } else if (item_selecionado == 3) {
+        updateMenu(ssd, &frame_area, item_selecionado);
+        item_selecionado = 1;
+      }
+    }
+
+    if (vry_value > 3000) {
+      if (item_selecionado == 1) {
+        updateMenu(ssd, &frame_area, item_selecionado);
+        item_selecionado = 3;
+
+      } else if (item_selecionado == 2) {
+        updateMenu(ssd, &frame_area, item_selecionado);
+        item_selecionado = 1;
+
+      } else if (item_selecionado == 3) {
+        updateMenu(ssd, &frame_area, item_selecionado);
+        item_selecionado = 2;
+      }
     }
 
     // Pequeno delay antes da próxima leitura
-    sleep_ms(100); // Espera 100 ms antes de repetir o ciclo
+    sleep_ms(150); // Espera 100 ms antes de repetir o ciclo
   }
 }
