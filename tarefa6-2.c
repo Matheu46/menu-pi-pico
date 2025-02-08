@@ -93,11 +93,13 @@ void LimparDisplay(uint8_t *ssd, struct render_area *frame_area) {
 }
 
 // Função para ler os valores dos eixos do joystick (X e Y)
-void joystick_read_axis(uint16_t *vry_value) {
+void joystick_read_axis(uint16_t *vry_value, uint16_t *sw_value) {
   // Leitura do valor do eixo Y do joystick
   adc_select_input(ADC_CHANNEL_1); // Seleciona o canal ADC para o eixo Y
   sleep_us(2);                     // Pequeno delay para estabilidade
   *vry_value = adc_read();         // Lê o valor do eixo Y (0-4095)
+
+  *sw_value = gpio_get(SW);
 }
 
 // Função principal
@@ -131,10 +133,10 @@ int main() {
   updateMenu(ssd, &frame_area, item_selecionado);
 
   while (1) {
-    joystick_read_axis(&vry_value); // Lê os valores dos eixos do joystick
+    joystick_read_axis(&vry_value, &sw_value); // Lê os valores dos eixos do joystick
     // pwm_set_gpio_level(LED_R, vry_value); // Ajusta o brilho do LED vermelho com o valor do eixo Y
     
-    if (vry_value < 1000) {
+    if (vry_value < 1000) { //descendo
       if (item_selecionado == 1) {
         updateMenu(ssd, &frame_area, item_selecionado);
         item_selecionado = 2;
@@ -149,7 +151,7 @@ int main() {
       }
     }
 
-    if (vry_value > 3000) {
+    if (vry_value > 3000) { //subindo
       if (item_selecionado == 1) {
         updateMenu(ssd, &frame_area, item_selecionado);
         item_selecionado = 3;
@@ -161,6 +163,12 @@ int main() {
       } else if (item_selecionado == 3) {
         updateMenu(ssd, &frame_area, item_selecionado);
         item_selecionado = 2;
+      }
+    }
+
+    if (sw_value == 0) {
+      if (item_selecionado == 1) {
+        LimparDisplay(ssd, &frame_area);
       }
     }
 
