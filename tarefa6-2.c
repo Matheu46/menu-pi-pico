@@ -112,8 +112,8 @@ void joystick_read_axis(uint16_t *vry_value,  uint16_t *vrx_value, uint16_t *sw_
 
 void joystick_led_main() {
   uint16_t vrx_value, vry_value, sw_value; // Variáveis para armazenar os valores do joystick (eixos X e Y) e botão
-  setup();                                 // Chama a função de configuração
-  printf("Joystick-PWM\n");                // Exibe uma mensagem inicial via porta serial
+  // setup();                                 // Chama a função de configuração
+  // printf("Joystick-PWM\n");                // Exibe uma mensagem inicial via porta serial
   // Loop principal
   while (1)
   {
@@ -122,6 +122,9 @@ void joystick_led_main() {
     pwm_set_gpio_level(LED_B, vrx_value); // Ajusta o brilho do LED azul com o valor do eixo X
     pwm_set_gpio_level(LED_R, vry_value); // Ajusta o brilho do LED vermelho com o valor do eixo Y
 
+    if (sw_value == 0) {
+      break;
+    }
     // Pequeno delay antes da próxima leitura
     sleep_ms(100); // Espera 100 ms antes de repetir o ciclo
   }
@@ -201,8 +204,9 @@ int main() {
     if (sw_value == 0) {
       if (item_selecionado == 1) {
         LimparDisplay(ssd, &frame_area);
+        sleep_ms(200);
         joystick_led_main();
-        // rodar projeto
+        updateMenu(ssd, &frame_area, 1);
       }
       if (item_selecionado == 2) {
         LimparDisplay(ssd, &frame_area);
