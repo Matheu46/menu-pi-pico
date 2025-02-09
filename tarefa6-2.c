@@ -14,6 +14,7 @@ const uint I2C_SCL = 15;
 
 // Definição dos pinos usados para o joystick e LEDs
 const int VRY = 26;          // Pino de leitura do eixo Y do joystick (conectado ao ADC)
+const int VRX = 27;          // Pino de leitura do eixo X do joystick (conectado ao ADC)
 const int ADC_CHANNEL_0 = 1; // Canal ADC para o eixo X do joystick
 const int ADC_CHANNEL_1 = 0; // Canal ADC para o eixo Y do joystick
 const int SW = 22;           // Pino de leitura do botão do joystick
@@ -30,6 +31,7 @@ void setup_joystick()
 {
   // Inicializa o ADC e os pinos de entrada analógica
   adc_init();         // Inicializa o módulo ADC
+  adc_gpio_init(VRX); // Configura o pino VRX (eixo X) para entrada ADC
   adc_gpio_init(VRY); // Configura o pino VRY (eixo Y) para entrada ADC
 
   // Inicializa o pino do botão do joystick
@@ -93,7 +95,13 @@ void LimparDisplay(uint8_t *ssd, struct render_area *frame_area) {
 }
 
 // Função para ler os valores dos eixos do joystick (X e Y)
-void joystick_read_axis(uint16_t *vry_value, uint16_t *sw_value) {
+void joystick_read_axis(uint16_t *vry_value,  uint16_t *vrx_value, uint16_t *sw_value) {
+
+  // Leitura do valor do eixo X do joystick
+  adc_select_input(ADC_CHANNEL_0); // Seleciona o canal ADC para o eixo X
+  sleep_us(2);                     // Pequeno delay para estabilidade
+  *vrx_value = adc_read();         // Lê o valor do eixo X (0-4095)
+
   // Leitura do valor do eixo Y do joystick
   adc_select_input(ADC_CHANNEL_1); // Seleciona o canal ADC para o eixo Y
   sleep_us(2);                     // Pequeno delay para estabilidade
@@ -102,9 +110,26 @@ void joystick_read_axis(uint16_t *vry_value, uint16_t *sw_value) {
   *sw_value = gpio_get(SW);
 }
 
+void joystick_led_main() {
+  uint16_t vrx_value, vry_value, sw_value; // Variáveis para armazenar os valores do joystick (eixos X e Y) e botão
+  setup();                                 // Chama a função de configuração
+  printf("Joystick-PWM\n");                // Exibe uma mensagem inicial via porta serial
+  // Loop principal
+  while (1)
+  {
+    joystick_read_axis(&vry_value, &vrx_value, &sw_value); // Lê os valores dos eixos do joystick
+    // Ajusta os níveis PWM dos LEDs de acordo com os valores do joystick
+    pwm_set_gpio_level(LED_B, vrx_value); // Ajusta o brilho do LED azul com o valor do eixo X
+    pwm_set_gpio_level(LED_R, vry_value); // Ajusta o brilho do LED vermelho com o valor do eixo Y
+
+    // Pequeno delay antes da próxima leitura
+    sleep_ms(100); // Espera 100 ms antes de repetir o ciclo
+  }
+}
+
 // Função principal
 int main() {
-  uint16_t vry_value, sw_value; // Variáveis para armazenar os valores do joystick (eixos X e Y) e botão
+  uint16_t vrx_value, vry_value, sw_value; // Variáveis para armazenar os valores do joystick (eixos X e Y) e botão
   setup();                                 // Chama a função de configuração
   
   i2c_init(i2c1, ssd1306_i2c_clock * 1000);
@@ -129,46 +154,63 @@ int main() {
   uint8_t ssd[ssd1306_buffer_length];
   LimparDisplay(ssd, &frame_area); 
   
+  int item_proximo = 1;
   int item_selecionado = 1;
-  updateMenu(ssd, &frame_area, item_selecionado);
+  updateMenu(ssd, &frame_area, item_proximo);
 
   while (1) {
-    joystick_read_axis(&vry_value, &sw_value); // Lê os valores dos eixos do joystick
+    joystick_read_axis(&vry_value, &vrx_value, &sw_value); // Lê os valores dos eixos do joystick
     // pwm_set_gpio_level(LED_R, vry_value); // Ajusta o brilho do LED vermelho com o valor do eixo Y
     
     if (vry_value < 1000) { //descendo
-      if (item_selecionado == 1) {
-        updateMenu(ssd, &frame_area, item_selecionado);
-        item_selecionado = 2;
+      if (item_proximo == 1) {
+        updateMenu(ssd, &frame_area, item_proximo);
+        item_selecionado = item_proximo;
+        item_proximo = 2;
 
-      } else if (item_selecionado == 2) {
-        updateMenu(ssd, &frame_area, item_selecionado);
-        item_selecionado = 3;
+      } else if (item_proximo == 2) {
+        updateMenu(ssd, &frame_area, item_proximo);
+        item_selecionado = item_proximo;
+        item_proximo = 3;
 
-      } else if (item_selecionado == 3) {
-        updateMenu(ssd, &frame_area, item_selecionado);
-        item_selecionado = 1;
+      } else if (item_proximo == 3) {
+        updateMenu(ssd, &frame_area, item_proximo);
+        item_selecionado = item_proximo;
+        item_proximo = 1;
       }
     }
 
     if (vry_value > 3000) { //subindo
-      if (item_selecionado == 1) {
-        updateMenu(ssd, &frame_area, item_selecionado);
-        item_selecionado = 3;
+      if (item_proximo == 1) {
+        updateMenu(ssd, &frame_area, item_proximo);
+        item_selecionado = item_proximo;
+        item_proximo = 3;
 
-      } else if (item_selecionado == 2) {
-        updateMenu(ssd, &frame_area, item_selecionado);
-        item_selecionado = 1;
+      } else if (item_proximo == 2) {
+        updateMenu(ssd, &frame_area, item_proximo);
+        item_selecionado = item_proximo;
+        item_proximo = 1;
 
-      } else if (item_selecionado == 3) {
-        updateMenu(ssd, &frame_area, item_selecionado);
-        item_selecionado = 2;
+      } else if (item_proximo == 3) {
+        updateMenu(ssd, &frame_area, item_proximo);
+        item_selecionado = item_proximo;
+        item_proximo = 2;
       }
     }
 
     if (sw_value == 0) {
       if (item_selecionado == 1) {
         LimparDisplay(ssd, &frame_area);
+        joystick_led_main();
+        // rodar projeto
+      }
+      if (item_selecionado == 2) {
+        LimparDisplay(ssd, &frame_area);
+        // rodar projeto
+      }
+      if (item_selecionado == 3) {
+        LimparDisplay(ssd, &frame_area);
+        // rodar projeto
       }
     }
 
