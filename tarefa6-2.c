@@ -125,26 +125,26 @@ void updateMenu(uint8_t *ssd, struct render_area *frame_area, int item){
   char *text[3];
   
   if(item == 1) {
-    text[0] = "X  Item 1";
-    text[1] = "   Item 2";
-    text[2] = "   Item 3";
+    text[0] = "X  Programa 1";
+    text[1] = "   Programa 2";
+    text[2] = "   Programa 3";
   }
   if(item == 2) {
-    text[0] = "   Item 1";
-    text[1] = "X  Item 2";
-    text[2] = "   Item 3";
+    text[0] = "   Programa 1";
+    text[1] = "X  Programa 2";
+    text[2] = "   Programa 3";
   }
   if(item == 3) {
-    text[0] = "   Item 1";
-    text[1] = "   Item 2";
-    text[2] = "X  Item 3";
+    text[0] = "   Programa 1";
+    text[1] = "   Programa 2";
+    text[2] = "X  Programa 3";
   }
 
   int y = 0;
   for (uint i = 0; i < count_of(text); i++)
   {
       ssd1306_draw_string(ssd, 5, y, text[i]);
-      y += 8;
+      y += 16;
   }
   render_on_display(ssd, frame_area);
 }
@@ -217,7 +217,7 @@ int main_pwm_led()
   {
       pwm_set_gpio_level(LED, led_level); // Define o nível atual do PWM (duty cycle)
       sleep_ms(1000);                     // Atraso de 1 segundo
-      
+
       if (gpio_get(SW) == 0) {
         sleep_ms(100); // Debounce do botão
         pwm_set_gpio_level(LED, 0); // Desliga o led antes de sair
@@ -310,42 +310,15 @@ int main() {
 
   while (1) {
     joystick_read_axis(&vry_value, &vrx_value, &sw_value); // Lê os valores dos eixos do joystick
-    // pwm_set_gpio_level(LED_R, vry_value); // Ajusta o brilho do LED vermelho com o valor do eixo Y
     
     if (vry_value < 1000) { //descendo
-      if (item_proximo == 1) {
-        updateMenu(ssd, &frame_area, item_proximo);
-        item_selecionado = item_proximo;
-        item_proximo = 2;
-
-      } else if (item_proximo == 2) {
-        updateMenu(ssd, &frame_area, item_proximo);
-        item_selecionado = item_proximo;
-        item_proximo = 3;
-
-      } else if (item_proximo == 3) {
-        updateMenu(ssd, &frame_area, item_proximo);
-        item_selecionado = item_proximo;
-        item_proximo = 1;
-      }
+      item_selecionado = (item_selecionado % 3) + 1;
+      updateMenu(ssd, &frame_area, item_selecionado);
     }
 
-    if (vry_value > 3000) { //subindo
-      if (item_proximo == 1) {
-        updateMenu(ssd, &frame_area, item_proximo);
-        item_selecionado = item_proximo;
-        item_proximo = 3;
-
-      } else if (item_proximo == 2) {
-        updateMenu(ssd, &frame_area, item_proximo);
-        item_selecionado = item_proximo;
-        item_proximo = 1;
-
-      } else if (item_proximo == 3) {
-        updateMenu(ssd, &frame_area, item_proximo);
-        item_selecionado = item_proximo;
-        item_proximo = 2;
-      }
+    if (vry_value > 4000) { //subindo
+      item_selecionado = (item_selecionado == 1) ? 3 : item_selecionado - 1;
+      updateMenu(ssd, &frame_area, item_selecionado);
     }
 
     if (sw_value == 0) {
@@ -354,18 +327,21 @@ int main() {
         sleep_ms(200);
         main_joystick_led();
         updateMenu(ssd, &frame_area, 1);
+        item_proximo, item_selecionado = 1;
       }
       if (item_selecionado == 2) {
         LimparDisplay(ssd, &frame_area);
         sleep_ms(200);
         main_buzzer_pwm();
         updateMenu(ssd, &frame_area, 1);
+        item_proximo, item_selecionado = 1;
       }
       if (item_selecionado == 3) {
         LimparDisplay(ssd, &frame_area);
         sleep_ms(200);
         main_pwm_led();
         updateMenu(ssd, &frame_area, 1);
+        item_proximo, item_selecionado = 1;
       }
     }
 
