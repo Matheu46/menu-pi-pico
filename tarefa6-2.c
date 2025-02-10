@@ -190,9 +190,9 @@ void play_tone(uint pin, uint frequency, uint duration_ms) {
 int play_star_wars(uint pin) {
 
   for (int i = 0; i < sizeof(star_wars_notes) / sizeof(star_wars_notes[0]); i++) {
-    sleep_ms(50);
     if (gpio_get(SW) == 0) {
-      return 0;
+     sleep_ms(100);
+     return 0;
     }
 
     if (star_wars_notes[i] == 0) {
@@ -220,6 +220,7 @@ int main_pwm_led()
 
         if (gpio_get(SW) == 0) {
             pwm_set_gpio_level(LED, 0); // Desliga o LED antes de sair
+            sleep_ms(100);
             break; // Sai do loop e encerra o programa
         }
     }
@@ -272,6 +273,7 @@ void main_joystick_led() {
     pwm_set_gpio_level(LED_R, vry_value); // Ajusta o brilho do LED vermelho com o valor do eixo Y
 
     if (gpio_get(SW) == 0) {
+      sleep_ms(200);
       setup_pwm_led(LED_B, &slice_led_b, 0);//desliga os leds antes de sair 
       setup_pwm_led(LED_R, &slice_led_r, 0); 
       break;
