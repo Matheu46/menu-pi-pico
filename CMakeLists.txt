@@ -51,6 +51,7 @@ target_link_libraries(tarefa6-2
 # Add the standard include files to the build
 target_include_directories(tarefa6-2 PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts or any other standard includes, if required
 )
 
 # Add any user requested libraries

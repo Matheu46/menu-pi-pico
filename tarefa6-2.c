@@ -30,6 +30,23 @@ uint slice_led_b, slice_led_r;           // Variáveis para armazenar os slices 
 // Configuração do pino do buzzer
 #define BUZZER_PIN 21
 
+const uint LED = 12;            // Pino do LED conectado
+const uint16_t PERIOD_LED_0 = 2000;   // Período do PWM (valor máximo do contador)
+const float DIVIDER_PWM_LED_0 = 16.0; // Divisor fracional do clock para o PWM
+const uint16_t LED_STEP = 100;  // Passo de incremento/decremento para o duty cycle do LED
+uint16_t led_level = 100;       // Nível inicial do PWM (duty cycle)
+
+void setup_pwm()
+{
+    uint slice;
+    gpio_set_function(LED, GPIO_FUNC_PWM); // Configura o pino do LED para função PWM
+    slice = pwm_gpio_to_slice_num(LED);    // Obtém o slice do PWM associado ao pino do LED
+    pwm_set_clkdiv(slice, DIVIDER_PWM_LED_0);    // Define o divisor de clock do PWM
+    pwm_set_wrap(slice, PERIOD_LED_0);           // Configura o valor máximo do contador (período do PWM)
+    pwm_set_gpio_level(LED, led_level);    // Define o nível inicial do PWM para o pino do LED
+    pwm_set_enabled(slice, true);          // Habilita o PWM no slice correspondente
+}
+
 // Notas musicais para a música tema de Star Wars
 const uint star_wars_notes[] = {
     330, 330, 330, 262, 392, 523, 330, 262,
@@ -191,6 +208,37 @@ int play_star_wars(uint pin) {
 }
 
 // Main's dos outros códigos
+int main_pwm_led()
+{
+  uint up_down = 1; // Variável para controlar se o nível do LED aumenta ou diminui
+
+  setup_pwm();      // Configura o PWM
+  while (true)
+  {
+      pwm_set_gpio_level(LED, led_level); // Define o nível atual do PWM (duty cycle)
+      sleep_ms(1000);                     // Atraso de 1 segundo
+      
+      if (gpio_get(SW) == 0) {
+        sleep_ms(100); // Debounce do botão
+        pwm_set_gpio_level(LED, 0); // Desliga o led antes de sair
+        break;         // Sai do loop e encerra o programa
+      } 
+
+      if (up_down)
+      {
+          led_level += LED_STEP; // Incrementa o nível do LED
+          if (led_level >= PERIOD)
+              up_down = 0; // Muda direção para diminuir quando atingir o período máximo
+      }
+      else
+      {
+          led_level -= LED_STEP; // Decrementa o nível do LED
+          if (led_level <= LED_STEP)
+              up_down = 1; // Muda direção para aumentar quando atingir o mínimo
+      }
+  }
+}
+
 int main_buzzer_pwm() {
   // uint16_t sw_value;
   // stdio_init_all();
@@ -210,8 +258,6 @@ void main_joystick_led() {
   setup_pwm_led(LED_R, &slice_led_r, led_r_level); // Configura o PWM para o LED vermelho
 
   uint16_t vrx_value, vry_value, sw_value; // Variáveis para armazenar os valores do joystick (eixos X e Y) e botão
-  // setup();                                 // Chama a função de configuração
-  // printf("Joystick-PWM\n");                // Exibe uma mensagem inicial via porta serial
   // Loop principal
   while (1)
   {
@@ -220,7 +266,7 @@ void main_joystick_led() {
     pwm_set_gpio_level(LED_B, vrx_value); // Ajusta o brilho do LED azul com o valor do eixo X
     pwm_set_gpio_level(LED_R, vry_value); // Ajusta o brilho do LED vermelho com o valor do eixo Y
 
-    if (sw_value == 0) {
+    if (gpio_get(SW) == 0) {
       sleep_ms(200); // Debounce do botão
       setup_pwm_led(LED_B, &slice_led_b, 0);//desliga os leds antes de sair 
       setup_pwm_led(LED_R, &slice_led_r, 0); 
@@ -317,7 +363,9 @@ int main() {
       }
       if (item_selecionado == 3) {
         LimparDisplay(ssd, &frame_area);
-        // rodar projeto
+        sleep_ms(200);
+        main_pwm_led();
+        updateMenu(ssd, &frame_area, 1);
       }
     }
 
