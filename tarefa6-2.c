@@ -8,6 +8,7 @@
 #include "pico/binary_info.h"
 #include "inc/ssd1306.h"
 #include "hardware/i2c.h"
+#include "hardware/clocks.h"
 
 const uint I2C_SDA = 14;
 const uint I2C_SCL = 15;
@@ -25,6 +26,50 @@ const float DIVIDER_PWM = 16.0;          // Divisor fracional do clock para o PW
 const uint16_t PERIOD = 4096;            // Período do PWM (valor máximo do contador)
 uint16_t led_b_level, led_r_level = 100; // Inicialização dos níveis de PWM para os LEDs
 uint slice_led_b, slice_led_r;           // Variáveis para armazenar os slices de PWM correspondentes aos LEDs
+
+// Configuração do pino do buzzer
+#define BUZZER_PIN 21
+
+// Notas musicais para a música tema de Star Wars
+const uint star_wars_notes[] = {
+    330, 330, 330, 262, 392, 523, 330, 262,
+    392, 523, 330, 659, 659, 659, 698, 523,
+    415, 349, 330, 262, 392, 523, 330, 262,
+    392, 523, 330, 659, 659, 659, 698, 523,
+    415, 349, 330, 523, 494, 440, 392, 330,
+    659, 784, 659, 523, 494, 440, 392, 330,
+    659, 659, 330, 784, 880, 698, 784, 659,
+    523, 494, 440, 392, 659, 784, 659, 523,
+    494, 440, 392, 330, 659, 523, 659, 262,
+    330, 294, 247, 262, 220, 262, 330, 262,
+    330, 294, 247, 262, 330, 392, 523, 440,
+    349, 330, 659, 784, 659, 523, 494, 440,
+    392, 659, 784, 659, 523, 494, 440, 392
+};
+
+// Duração das notas em milissegundos
+const uint note_duration[] = {
+    500, 500, 500, 350, 150, 300, 500, 350,
+    150, 300, 500, 500, 500, 500, 350, 150,
+    300, 500, 500, 350, 150, 300, 500, 350,
+    150, 300, 650, 500, 150, 300, 500, 350,
+    150, 300, 500, 150, 300, 500, 350, 150,
+    300, 650, 500, 350, 150, 300, 500, 350,
+    150, 300, 500, 500, 500, 500, 350, 150,
+    300, 500, 500, 350, 150, 300, 500, 350,
+    150, 300, 500, 350, 150, 300, 500, 500,
+    350, 150, 300, 500, 500, 350, 150, 300,
+};
+
+// Inicializa o PWM no pino do buzzer
+void pwm_init_buzzer(uint pin) {
+    gpio_set_function(pin, GPIO_FUNC_PWM);
+    uint slice_num = pwm_gpio_to_slice_num(pin);
+    pwm_config config = pwm_get_default_config();
+    pwm_config_set_clkdiv(&config, 4.0f); // Ajusta divisor de clock
+    pwm_init(slice_num, &config, true);
+    pwm_set_gpio_level(pin, 0); // Desliga o PWM inicialmente
+}
 
 // Função para configurar o joystick (pinos de leitura e ADC)
 void setup_joystick()
@@ -56,8 +101,6 @@ void setup()
 {
   stdio_init_all();                                // Inicializa a porta serial para saída de dados
   setup_joystick();                                // Chama a função de configuração do joystick
-  setup_pwm_led(LED_B, &slice_led_b, led_b_level); // Configura o PWM para o LED azul
-  setup_pwm_led(LED_R, &slice_led_r, led_r_level); // Configura o PWM para o LED vermelho
 }
 
 void updateMenu(uint8_t *ssd, struct render_area *frame_area, int item){
@@ -110,7 +153,62 @@ void joystick_read_axis(uint16_t *vry_value,  uint16_t *vrx_value, uint16_t *sw_
   *sw_value = gpio_get(SW);
 }
 
-void joystick_led_main() {
+
+// Toca uma nota com a frequência e duração especificadas
+void play_tone(uint pin, uint frequency, uint duration_ms) {
+    uint slice_num = pwm_gpio_to_slice_num(pin);
+    uint32_t clock_freq = clock_get_hz(clk_sys);
+    uint32_t top = clock_freq / frequency - 1;
+
+    pwm_set_wrap(slice_num, top);
+    pwm_set_gpio_level(pin, top / 2); // 50% de duty cycle
+
+    sleep_ms(duration_ms);
+
+    pwm_set_gpio_level(pin, 0); // Desliga o som após a duração
+    sleep_ms(50); // Pausa entre notas
+}
+
+// Função principal para tocar a música
+int play_star_wars(uint pin) {
+  uint16_t vrx_value, vry_value, sw_value;
+
+  for (int i = 0; i < sizeof(star_wars_notes) / sizeof(star_wars_notes[0]); i++) {
+    sleep_ms(50);
+    joystick_read_axis(&vry_value, &vrx_value, &sw_value);
+    if (sw_value == 0) {
+      sleep_ms(200); // Debounce do botão
+      return 0;
+    }
+
+    if (star_wars_notes[i] == 0) {
+        sleep_ms(note_duration[i]);
+    } else {
+        play_tone(pin, star_wars_notes[i], note_duration[i]);
+    }
+  }
+  return 1;
+}
+
+// Main's dos outros códigos
+int main_buzzer_pwm() {
+  // uint16_t sw_value;
+  // stdio_init_all();
+  pwm_init_buzzer(BUZZER_PIN);
+  int control = 1;
+
+  while(control){
+    // *sw_value = gpio_get(SW);
+    control = play_star_wars(BUZZER_PIN);
+  }
+  
+  return 0;
+}
+
+void main_joystick_led() {
+  setup_pwm_led(LED_B, &slice_led_b, led_b_level); // Configura o PWM para o LED azul
+  setup_pwm_led(LED_R, &slice_led_r, led_r_level); // Configura o PWM para o LED vermelho
+
   uint16_t vrx_value, vry_value, sw_value; // Variáveis para armazenar os valores do joystick (eixos X e Y) e botão
   // setup();                                 // Chama a função de configuração
   // printf("Joystick-PWM\n");                // Exibe uma mensagem inicial via porta serial
@@ -123,6 +221,9 @@ void joystick_led_main() {
     pwm_set_gpio_level(LED_R, vry_value); // Ajusta o brilho do LED vermelho com o valor do eixo Y
 
     if (sw_value == 0) {
+      sleep_ms(200); // Debounce do botão
+      setup_pwm_led(LED_B, &slice_led_b, 0);//desliga os leds antes de sair 
+      setup_pwm_led(LED_R, &slice_led_r, 0); 
       break;
     }
     // Pequeno delay antes da próxima leitura
@@ -205,12 +306,14 @@ int main() {
       if (item_selecionado == 1) {
         LimparDisplay(ssd, &frame_area);
         sleep_ms(200);
-        joystick_led_main();
+        main_joystick_led();
         updateMenu(ssd, &frame_area, 1);
       }
       if (item_selecionado == 2) {
         LimparDisplay(ssd, &frame_area);
-        // rodar projeto
+        sleep_ms(200);
+        main_buzzer_pwm();
+        updateMenu(ssd, &frame_area, 1);
       }
       if (item_selecionado == 3) {
         LimparDisplay(ssd, &frame_area);

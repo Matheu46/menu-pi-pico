@@ -58,6 +58,7 @@ target_link_libraries(tarefa6-2
         hardware_i2c
         hardware_adc 
         hardware_pwm
+        hardware_clocks
         )
 
 pico_add_extra_outputs(tarefa6-2)
