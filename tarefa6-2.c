@@ -188,12 +188,10 @@ void play_tone(uint pin, uint frequency, uint duration_ms) {
 
 // Função principal para tocar a música
 int play_star_wars(uint pin) {
-  uint16_t vrx_value, vry_value, sw_value;
 
   for (int i = 0; i < sizeof(star_wars_notes) / sizeof(star_wars_notes[0]); i++) {
     sleep_ms(50);
-    joystick_read_axis(&vry_value, &vrx_value, &sw_value);
-    if (sw_value == 0) {
+    if (gpio_get(SW) == 0) {
       return 0;
     }
 
