@@ -194,7 +194,6 @@ int play_star_wars(uint pin) {
     sleep_ms(50);
     joystick_read_axis(&vry_value, &vrx_value, &sw_value);
     if (sw_value == 0) {
-      sleep_ms(200); // Debounce do botão
       return 0;
     }
 
@@ -215,27 +214,35 @@ int main_pwm_led()
   setup_pwm();      // Configura o PWM
   while (true)
   {
-      pwm_set_gpio_level(LED, led_level); // Define o nível atual do PWM (duty cycle)
-      sleep_ms(1000);                     // Atraso de 1 segundo
+    pwm_set_gpio_level(LED, led_level); // Define o nível atual do PWM (duty cycle)
 
-      if (gpio_get(SW) == 0) {
-        sleep_ms(100); // Debounce do botão
-        pwm_set_gpio_level(LED, 0); // Desliga o led antes de sair
-        break;         // Sai do loop e encerra o programa
-      } 
+    // Divide o atraso de 1 segundo em 10 intervalos de 100ms
+    for (int i = 0; i < 10; i++) {
+        sleep_ms(100); // Atraso de 100ms
 
-      if (up_down)
-      {
-          led_level += LED_STEP; // Incrementa o nível do LED
-          if (led_level >= PERIOD)
-              up_down = 0; // Muda direção para diminuir quando atingir o período máximo
-      }
-      else
-      {
-          led_level -= LED_STEP; // Decrementa o nível do LED
-          if (led_level <= LED_STEP)
-              up_down = 1; // Muda direção para aumentar quando atingir o mínimo
-      }
+        if (gpio_get(SW) == 0) {
+            pwm_set_gpio_level(LED, 0); // Desliga o LED antes de sair
+            break; // Sai do loop e encerra o programa
+        }
+    }
+
+    if (gpio_get(SW) == 0) {
+        // Se o botão foi pressionado durante o loop de 1 segundo, sair do loop principal
+        break;
+    }
+
+    if (up_down)
+    {
+        led_level += LED_STEP; // Incrementa o nível do LED
+        if (led_level >= PERIOD)
+            up_down = 0; // Muda direção para diminuir quando atingir o período máximo
+    }
+    else
+    {
+        led_level -= LED_STEP; // Decrementa o nível do LED
+        if (led_level <= LED_STEP)
+            up_down = 1; // Muda direção para aumentar quando atingir o mínimo
+    }
   }
 }
 
@@ -267,7 +274,6 @@ void main_joystick_led() {
     pwm_set_gpio_level(LED_R, vry_value); // Ajusta o brilho do LED vermelho com o valor do eixo Y
 
     if (gpio_get(SW) == 0) {
-      sleep_ms(200); // Debounce do botão
       setup_pwm_led(LED_B, &slice_led_b, 0);//desliga os leds antes de sair 
       setup_pwm_led(LED_R, &slice_led_r, 0); 
       break;
